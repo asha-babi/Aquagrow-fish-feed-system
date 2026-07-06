@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<!--
+  ════════════════════════════════════════════════════════════
+  Aquagrow – Fish Feed Ingredient Management Platform
+  Judy Fish Facilities, Gaza Province, Mozambique
+  Nile Tilapia (Oreochromis niloticus) Research
+
+  This is a MULTI-PAGE site. Each real page is its own HTML
+  file (index.html, formulations.html, ingredients.html,
+  production.html). They all share:
+    - assets/style.css            (all visual styling)
+    - assets/acgrow-database.js   (all editable data)
+    - assets/acgrow-firebase.js   (Firebase config + init)
+    - assets/acgrow-app.js        (all rendering / app logic)
+
+  FILE LOAD ORDER (do not rearrange the scripts at the bottom):
+    1. Firebase SDK compat scripts (app + firestore)
+    2. assets/acgrow-firebase.js  → connects to Firestore
+    3. assets/acgrow-database.js  → STAGES, COSTS, ingredients, etc.
+    4. inline CURRENT_PAGE flag   → tells acgrow-app.js which
+                                     page's elements exist here
+    5. assets/acgrow-app.js       → renders this page + wires
+                                     up all button/form actions
+  ════════════════════════════════════════════════════════════
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ingredients – Aquagrow AFFIMP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<!-- ── ICON SPRITE (line icons, no emoji) ── -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-fish" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 12c3.5-4 8-6 13-4.5 2 .6 4 2 5.5 4-1.5 2-3.5 3.4-5.5 4C10 17 5.5 16 2 12z"/>
+      <path d="M17 9.5 20.5 6M17 14.5 20.5 18"/>
+      <circle cx="6.5" cy="11.3" r="0.6" fill="currentColor" stroke="none"/>
+    </symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="7.5" height="7.5" rx="1.2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.2"/>
+      <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.2"/>
+    </symbol>
+    <symbol id="i-wheat" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 21V5"/><path d="M12 6c-1.6-1.6-4-1.6-5.6 0M12 6c1.6-1.6 4-1.6 5.6 0"/>
+      <path d="M12 10c-1.6-1.6-4-1.6-5.6 0M12 10c1.6-1.6 4-1.6 5.6 0"/>
+      <path d="M12 14c-1.6-1.6-4-1.6-5.6 0M12 14c1.6-1.6 4-1.6 5.6 0"/><path d="M9.5 21h5"/>
+    </symbol>
+    <symbol id="i-clipboard" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="5" y="4" width="14" height="17" rx="1.5"/><rect x="9" y="2.5" width="6" height="3" rx="1"/>
+      <path d="M8 11h8M8 14.5h8M8 18h5"/>
+    </symbol>
+    <symbol id="i-factory" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 21V11l5 3v-3l5 3V8l5 3v10z"/><path d="M3 21h18"/><path d="M8 17v-2M12 17v-2M16 17v-2"/>
+    </symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.6-4.6"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 7h16M9 7V4.5h6V7M6 7l1 13h10l1-13"/><path d="M10 11v6M14 11v6"/>
+    </symbol>
+    <symbol id="i-database" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5V18c0 1.7 3.6 3 8 3s8-1.3 8-3V5.5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+  </defs>
+</svg>
+
+<!-- ── CONFIRM MODAL ── -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box">
+    <div class="modal-icon" style="color:var(--fail);display:flex;justify-content:center;"><svg class="icon-xl"><use href="#i-trash"/></svg></div>
+    <div class="modal-title" id="modalTitle">Confirm Delete</div>
+    <div class="modal-msg"   id="modalMsg">Are you sure you want to remove this item?</div>
+    <div class="modal-btns">
+      <button class="btn btn-danger"  id="modalConfirmBtn">Yes, Delete</button>
+      <button class="btn btn-primary" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="header-inner">
+    <div class="logo-mark"><svg class="icon"><use href="#i-fish"/></svg></div>
+    <div class="logo-text">
+      <h1>Aquagrow</h1>
+      <span class="logo-tag">AFFIMP</span>
+    </div>
+    <nav>
+      <a href="dashboard.html"><svg class="icon"><use href="#i-grid"/></svg> Dashboard</a>
+      <a href="ingredients.html" class="active"><svg class="icon"><use href="#i-wheat"/></svg> Ingredients</a>
+      <a href="formulations.html"><svg class="icon"><use href="#i-clipboard"/></svg> Formulations</a>
+      <a href="production.html"><svg class="icon"><use href="#i-factory"/></svg> Production</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<div id="page-ingredients">
+  <div class="card">
+    <div class="card-title" id="ingr-form-title"><svg class="icon icon-sm"><use href="#i-plus"/></svg> Add / Update Ingredient</div>
+    <div id="ingr-error" class="ingr-error">Ingredient name is required.</div>
+    <div class="ingr-controls">
+      <div class="ingr-field"><label>Name *</label><input type="text"    id="ingr-name"    placeholder="e.g. Fishmeal"></div>
+      <div class="ingr-field"><label>Protein (%)</label><input type="number" id="ingr-protein" placeholder="0.00" step="0.01" min="0"></div>
+      <div class="ingr-field"><label>Lipid (%)</label><input type="number"   id="ingr-lipid"   placeholder="0.00" step="0.01" min="0"></div>
+      <div class="ingr-field"><label>Ash (%)</label><input type="number"     id="ingr-ash"     placeholder="0.00" step="0.01" min="0"></div>
+      <div class="ingr-field"><label>Fiber (%)</label><input type="number"   id="ingr-fiber"   placeholder="0.00" step="0.01" min="0"></div>
+      <div class="ingr-field"><label>Price (USD/kg)</label><input type="number" id="ingr-price" placeholder="0.00" step="0.01" min="0"></div>
+      <div class="ingr-field"><label>Stock (kg)</label><input type="number"  id="ingr-stock"  placeholder="0.0"  step="0.1"  min="0"></div>
+      <div class="ingr-field" style="justify-content:flex-end;">
+        <label style="visibility:hidden;">Add</label>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary" id="ingr-submit-btn" onclick="addIngredient()"><svg class="icon icon-sm"><use href="#i-plus"/></svg> Add Ingredient</button>
+          <button class="btn btn-success" id="ingr-cancel-btn" onclick="cancelEditIngredient()" style="display:none;">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title"><svg class="icon icon-sm"><use href="#i-database"/></svg> Ingredients Inventory</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;">
+      <div style="position:relative;flex:1;min-width:200px;">
+        <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;display:flex;"><svg class="icon icon-sm"><use href="#i-search"/></svg></span>
+        <input type="text" id="ingr-search" placeholder="Search by name…"
+          oninput="renderIngredientTable()"
+          style="width:100%;border:1.5px solid var(--border);border-radius:6px;padding:8px 12px 8px 34px;font-size:13px;color:var(--ink);background:var(--white);outline:none;transition:border-color 0.15s;"
+          onfocus="this.style.borderColor='var(--teal-light)'" onblur="this.style.borderColor='var(--border)'">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Filter by stock</label>
+        <select id="ingr-filter-stock" onchange="renderIngredientTable()"
+          style="border:1.5px solid var(--border);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--ink);background:var(--white);outline:none;transition:border-color 0.15s;cursor:pointer;">
+          <option value="all">All stock levels</option>
+          <option value="low"> Low stock (&lt; 5 kg)</option>
+          <option value="ok"> Adequate stock (≥ 5 kg)</option>
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">Sort by</label>
+        <select id="ingr-sort" onchange="renderIngredientTable()"
+          style="border:1.5px solid var(--border);border-radius:6px;padding:8px 12px;font-size:13px;color:var(--ink);background:var(--white);outline:none;transition:border-color 0.15s;cursor:pointer;">
+          <option value="name">Name </option>
+          <option value="protein">Protein ↓</option>
+          <option value="price">Price ↓</option>
+          <option value="stock">Stock ↓</option>
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;">&nbsp;</label>
+        <button class="btn btn-success btn-sm" onclick="clearIngrFilters()" style="height:36px;">Clear</button>
+      </div>
+    </div>
+    <div id="ingr-filter-info" style="font-size:12px;color:var(--muted);margin-bottom:10px;display:none;"></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Ingredient</th><th class="num-cell">Protein %</th><th class="num-cell">Lipid %</th>
+            <th class="num-cell">Ash %</th><th class="num-cell">Fiber %</th>
+            <th class="num-cell">Price USD/kg</th><th class="num-cell">Stock (kg)</th><th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="ingr-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+</main>
+
+<footer>
+  <strong>Aquagrow Fish Feed Ingredient Management Platform (AFFIMP)</strong> &nbsp;·&nbsp;
+  Judy Fish Facilities, Gaza Province, Mozambique &nbsp;·&nbsp;
+  Nile Tilapia Research &nbsp;·&nbsp;
+  FAO Nutritional Standards Reference
+</footer>
+
+<!-- ════════════════════════════════════════════════════════
+     FIREBASE SDK
+═══════════════════════════════════════════════════════════ -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+<!-- ════════════════════════════════════════════════════════
+     APP SCRIPTS (shared across every page)
+═══════════════════════════════════════════════════════════ -->
+<script src="assets/acgrow-firebase.js"></script>
+<script src="assets/acgrow-database.js"></script>
+<script>const CURRENT_PAGE = 'ingredients';</script>
+<script src="assets/acgrow-app.js"></script>
+</body>
+</html>
